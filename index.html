@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shopping List</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: #f0f5f2;
+      color: #203c30;
+    }
+    main {
+      max-width: 650px;
+      margin: 40px auto;
+      padding: 28px;
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 8px 30px #203c3010;
+    }
+    h1 { margin-bottom: 8px; }
+    .intro, footer { color: #596b62; }
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 28px 0;
+      align-items: end;
+    }
+    label { display: block; margin-bottom: 6px; }
+    .name-field { flex: 1 1 200px; }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #a5b9ad;
+      border-radius: 8px;
+      font: inherit;
+    }
+    #quantity { width: 95px; }
+    button {
+      padding: 12px 18px;
+      border: none;
+      border-radius: 8px;
+      background: #28734f;
+      color: white;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:hover { background: #1d583c; }
+    input:focus-visible, button:focus-visible {
+      outline: 3px solid #db9b26;
+      outline-offset: 3px;
+    }
+    ul { padding: 0; list-style: none; }
+    li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid #e3ebe6;
+    }
+    .item-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+    }
+    .item-label input { width: 20px; height: 20px; }
+    .item-label span { overflow-wrap: anywhere; }
+    .bought span {
+      text-decoration: line-through;
+      color: #758279;
+    }
+    .delete {
+      background: #f9e9e6;
+      color: #963b2b;
+      padding: 8px 12px;
+    }
+    .delete:hover { background: #f2d6d0; }
+    #empty { padding: 20px 0; color: #596b62; }
+    #message { color: #963b2b; }
+    footer {
+      margin-top: 28px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      main { margin: 16px auto; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Shopping List</h1>
+    <p class="intro">Plan your shopping, one item at a time.</p>
+
+    <form id="item-form">
+      <div class="name-field">
+        <label for="item-name">Item name</label>
+        <input id="item-name" placeholder="e.g. Milk"
+               maxlength="100" required>
+      </div>
+      <div>
+        <label for="quantity">Quantity</label>
+        <input id="quantity" type="number"
+               min="1" max="999" step="1" value="1" required>
+      </div>
+      <button type="submit">Add item</button>
+    </form>
+
+    <p id="message" role="alert"></p>
+    <p id="summary" role="status"></p>
+    <p id="empty">Your list is empty. Add your first item above.</p>
+    <ul id="shopping-list" aria-label="Shopping items"></ul>
+
+    <footer>
+      CMPS 510 · Shopping List App<br>
+      Your list is saved in this browser on this device.
+    </footer>
+  </main>
+
+  <script>
+    const storageKey = "cmps510-shopping-list";
+    const form = document.getElementById("item-form");
+    const nameInput = document.getElementById("item-name");
+    const quantityInput = document.getElementById("quantity");
+    const list = document.getElementById("shopping-list");
+    const summary = document.getElementById("summary");
+    const empty = document.getElementById("empty");
+    const message = document.getElementById("message");
+
+    let items = [];
+
+    // Restore the saved list when the page opens.
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      if (!Array.isArray(saved)) {
+        throw new Error("Invalid saved list");
+      }
+      items = saved.filter(item =>
+        item &&
+        typeof item.name === "string" &&
+        item.name.trim().length > 0 &&
+        item.name.length <= 100 &&
+        Number.isInteger(item.quantity) &&
+        item.quantity >= 1 &&
+        item.quantity <= 999 &&
+        typeof item.bought === "boolean"
+      );
+    } catch (error) {
+      message.textContent =
+        "The saved list could not be loaded. You can start a new list.";
+    }
+
+    // Save item names, quantities and bought status.
+    function saveItems() {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(items));
+        message.textContent = "";
+      } catch (error) {
+        message.textContent =
+          "Your browser could not save changes. They may be lost on refresh.";
+      }
+    }
+
+    // Build the visible list safely using textContent.
+    function renderItems() {
+      list.replaceChildren();
+
+      items.forEach((item, index) => {
+        const row = document.createElement("li");
+        if (item.bought) row.classList.add("bought");
+
+        const label = document.createElement("label");
+        label.className = "item-label";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = item.bought;
+        checkbox.addEventListener("change", () => {
+          item.bought = checkbox.checked;
+          saveItems();
+          renderItems();
+        });
+
+        const text = document.createElement("span");
+        text.textContent = `${item.name} — Qty: ${item.quantity}`;
+
+        label.append(checkbox, text);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "delete";
+        deleteButton.textContent = "Delete";
+        deleteButton.setAttribute("aria-label", `Delete ${item.name}`);
+        deleteButton.addEventListener("click", () => {
+          items.splice(index, 1);
+          saveItems();
+          renderItems();
+        });
+
+        row.append(label, deleteButton);
+        list.append(row);
+      });
+
+      const boughtCount = items.filter(item => item.bought).length;
+      summary.textContent =
+        `${items.length} items · ${boughtCount} bought · ` +
+        `${items.length - boughtCount} remaining`;
+      empty.hidden = items.length > 0;
+    }
+
+    // Add a new item after checking its name and quantity.
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+
+      const name = nameInput.value.trim();
+      const quantity = Number(quantityInput.value);
+
+      if (!name) {
+        message.textContent = "Please enter an item name.";
+        nameInput.focus();
+        return;
+      }
+
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
+        message.textContent = "Please enter a whole quantity from 1 to 999.";
+        quantityInput.focus();
+        return;
+      }
+
+      items.push({ name, quantity, bought: false });
+      saveItems();
+      renderItems();
+
+      form.reset();
+      nameInput.focus();
+    });
+
+    renderItems();
+  </script>
+</body>
+</html>
