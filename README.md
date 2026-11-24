@@ -30,7 +30,7 @@ https://taratsoma9-ops.github.io/shopping-list-app/
 
 ## Application Screenshot
 
-![Shopping List Application](screenshot.png)
+![Shopping List Application](Screenshot%202026-11-24%20134031.png)
 
 ## AI Disclosure
 
